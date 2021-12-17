@@ -171,17 +171,6 @@ class GetCarState():
 
         #List of obstacle objects
         self.obstacles = []
-        
-        # a list of numbers
-        #self.red_obstacle_x = None
-        #self.red_obstacle_y = None
-        # a list of 4x2 arrays containing the XY global fr corners of an obstacle
-        #self.obstacle_corners = np.array([])
-        #self.obstacle_corners_pix = np.array([])
-        # a list of (2,) numpy array (x, y) of obstacle center in cm
-        #self.obstacle_xy_cm = np.array([])
-        #self.obstacleL = None  # obstacle length
-        #self.obstacleW = None  # obstacle width
 
     def mask_car(self, ros_image, landmarks, blue=True):
         """landmarks is a list of points representing the blue markers for the track.
@@ -192,9 +181,6 @@ class GetCarState():
         img_height = img.shape[0]
         img_width = img.shape[1]
 
-        # print(self.blue_x)
-        # print(self.blue_y)
-        # rospy.loginfo(img.shape)
         self.blue_x_prev = self.blue_x
         self.blue_y_prev = self.blue_y  # Keep in temporary variables in case state is lost
 
@@ -211,29 +197,15 @@ class GetCarState():
             mask[img[:, :, 0] > 200] = 1
             # breaks around 190, starts to be visible at 50
             mask[img[:, :, 2] > 150] = 0
-        # else:
-        #     mask[img[:, :, 1] > 200] = 1
-        #     mask[img[:, :, 2] > 180] = 0  # 90 - 180
-        #     mask[img[:, :, 0] > 220] = 0
-            # plt.imshow(mask)
-            # plt.show()
+
         mask = np.mean(mask, axis=2)
         bbox = self.get_loop_box(mask)
         if len(bbox) == 0:
             print("no car detected")
             self.blue_x = self.blue_x_prev
             self.blue_y = self.blue_y_prev
-            # self.blue_x = -1
-            # self.blue_y = -1
-            # print(self.blue_x)
-            # print(self.blue_y)
-            # return
+
         else:
-            # mask2 = np.zeros((img.shape[0], img.shape[1]))
-            # mask2[bbox[1]:bbox[1]+bbox[3], bbox[0]:bbox[0]+bbox[2]] = 1.0
-            # mask2 = np.stack((mask2, mask2, mask2), axis=2)
-            # mask2 = mask2.astype(np.uint8)
-            # car_mask = np.multiply(img, mask2)
             center = (0, 0)
             if blue:
                 self.blue_y = 719 if int(
@@ -241,21 +213,11 @@ class GetCarState():
                 self.blue_x = 1279 if int(
                     bbox[0] + bbox[2]/2) >= 1280 else int(bbox[0] + bbox[2]/2)
                 center = (self.blue_x, self.blue_y)
-            # else:
-            #     self.green_y = 719 if int(
-            #         bbox[1] + bbox[3]/2) >= 720 else int(bbox[1] + bbox[3]/2)
-            #     self.green_x = 1279 if int(
-            #         bbox[0] + bbox[2]/2) >= 1280 else int(bbox[0] + bbox[2]/2)
-            #     center = (self.green_x, self.green_y)
             img = cv2.circle(img, center, 10, (255, 0, 0), 5)
-            # cv2.imshow("Blue Car", img)
-            # cv2.waitKey(1)
         self.blue_x_history = np.append(self.blue_x_history, self.blue_x)
         self.blue_y_history = np.append(self.blue_y_history, self.blue_y)
 
     def mask_red_obstacle(self, ros_image, pointFromPixel):
-        
-        # rospy.loginfo('Got color image!')
         img = self.ros_to_np_img(ros_image)
         img_height = img.shape[0]
         img_width = img.shape[1]
@@ -266,20 +228,11 @@ class GetCarState():
         self.obstacles = []
         obstacle_detected = True
         while obstacle_detected:
-            #print(3)
             mask = np.zeros(img.shape)
             mask[img_masked[:, :, 2] > 170] = 1
-            # plt.imshow(img_masked)
-            # plt.show()
             mask[img_masked[:, :, 0] > 150] = 0
-            # mask[img[:, :, 0] > 150] = 0
-            # plt.imshow(mask)
-            # plt.show()
             mask = np.mean(mask, axis=2)
             bbox = self.get_loop_box(mask, largest=1, threshold=1500) # the threshold for obstacle is 1500
-            # print(bbox)
-            # plt.imshow(mask)
-            # plt.show()
             if len(bbox) == 0:
                 if len(self.obstacles) >= 1:
                     return True
@@ -287,13 +240,6 @@ class GetCarState():
                     print("no obstacle detected")
                     return False
             else:
-                # create an Obstacle object from the bounding box and mask the img_masked
-                # mask2 = np.zeros((img.shape[0], img.shape[1]))
-                # mask2[bbox[1]:bbox[1]+bbox[3], bbox[0]:bbox[0]+bbox[2]] = 1.0
-                # mask2 = np.stack((mask2, mask2, mask2), axis=2)
-                # mask2 = mask2.astype(np.uint8)
-                # plt.imshow(mask2)
-                # plt.show()
                 obstacle_corners_pix, obstacle_corners = self.getContours(
                     img, bbox, mask, pointFromPixel) # passing in the img is just for its shape
                 
@@ -302,22 +248,13 @@ class GetCarState():
                     bbox[1] + bbox[3]/2) >= 720 else int(bbox[1] + bbox[3]/2)
                 red_obstacle_bb_center_x = 1279 if int(
                     bbox[0] + bbox[2]/2) >= 1280 else int(bbox[0] + bbox[2]/2)
-                
-                # plot the center of the bounding box
-                # center = (red_obstacle_bb_center_x, red_obstacle_bb_center_y)
-                # img = cv2.circle(img, center, 10, (255, 0, 0), 5)
                 for corner in obstacle_corners_pix:
                     corner = tuple(corner)
                     corner = corner[1], corner[0]
                     img = cv2.circle(img, corner, 2, (255, 0, 0), 5)
                     img_masked = cv2.circle(img_masked, corner, 2, (255, 0, 0), 5)
-                # plot the bounding box
-                # img = cv2.rectangle(
-                #     img, (bbox[0], bbox[1]), (bbox[0]+bbox[2], bbox[1]+bbox[3]), (255, 0, 0), 2)
                 cv2.imshow("Red Obstacle", img)
                 cv2.waitKey(1)
-                # plt.imshow(np.array(cv2.cvtColor(img_masked, cv2.COLOR_BGR2RGB)))
-                # plt.show()
 
                 obs_obj = Obstacle(0, 0, 0, 0) #create obstacle object
                 obs_obj.red_obstacle_bb_center_x = red_obstacle_bb_center_x
@@ -328,17 +265,9 @@ class GetCarState():
                 #add to Self
                 self.obstacles.append(obs_obj)
                 print("mapping_track_to_model", self.obstacles)
-                # print(int(np.min(obstacle_corners_pix[:, 0])))
-                # print(int(np.max(obstacle_corners_pix[:, 0])))
-                # print(int(np.min(obstacle_corners_pix[:, 1])))
-                # print(int(np.max(obstacle_corners_pix[:, 1])))
                 # mask the img_masked
                 img_masked[int(np.min(obstacle_corners_pix[:, 0])):int(np.max(obstacle_corners_pix[:, 0])),
                     int(np.min(obstacle_corners_pix[:, 1])):int(np.max(obstacle_corners_pix[:, 1])), :] = [0, 0, 0]
-                # plt.imshow(img_masked)
-                # plt.show()
-
-                # img_masked = np.multiply(img_masked, mask2)
 
         return True
 
@@ -356,7 +285,6 @@ class GetCarState():
                 largest_label = np.argmax(stats[1:, cv2.CC_STAT_AREA]) + 1
                 bbox = stats[largest_label, :]
                 bboxes.append(bbox)
-                # print(bboxes)
             else:
                 break
 
@@ -371,12 +299,10 @@ class GetCarState():
             return []
         
         if largest == 1:
-            #print(bboxes)
             return bboxes[0]
         return bboxes[:largest]
 
     def getContours(self, img, bbox, mask, pointFromPixel):
-        # print("CONTOUR")
         box_offset = 40
         center = [bbox[1]+int(bbox[3]/2), bbox[0]+int(bbox[2])/2]
         box_offset_left = bbox[0] if bbox[0] < box_offset else box_offset
@@ -412,12 +338,6 @@ class GetCarState():
             dist_list_bottomleft)[:20]].mean(axis=0).astype(int)
         bottomright_rel_coord = obstacle_points_list[np.argsort(
             dist_list_bottomright)[:20]].mean(axis=0).astype(int)
-
-        # print(obstacle_points_list[np.argsort(dist_list_topleft)[:20]])
-        # print(topleft_rel_coord)
-        # print(topright_rel_coord)
-        # print(bottomleft_rel_coord)
-        # print(bottomright_rel_coord)
 
         plotting = False  # option to plot image with extrema
         if plotting:
@@ -673,9 +593,6 @@ class SysID():
                     except rospy.ServiceException as e:
                         print("image_process: Service call failed: %s" % e)
 
-                    # np.save(self.savedStates, self.state_vec) #save every loop
-                    #np.save(self.savedInputs, self.input_vec)
-
                     # FORCE DATA RECORDING TO HAPPEN AT EVEN INTERVALS
                     time_end = datetime.datetime.now()
                     t_delta = time_end - time_start
@@ -698,15 +615,8 @@ class SysID():
             (self.s_arr, self.n_arr, self.s_dot_arr, self.n_dot_arr, self.phi_arr))[:, num_dropped:]
         self.input_vec = np.vstack((self.offset_arr, self.speed_arr_input))[
             :, num_dropped:]
-
-        # perform smoothing on each row
-        #smoothed_data = np.copy(self.state_vec)
-        # for row_index in range(self.state_vec.shape[0]):
-        #    smoothed_row = wiener(smoothed_data[row_index, :], (3))  #2nd argument is the size of the filter
-        #    smoothed_data[row_index, :] = smoothed_row
         np.save(self.savedStates, self.state_vec)
         np.save(self.savedInputs, self.input_vec)
-        #np.save(self.savedSmoothed, smoothed_data)
         self.exp_smoothing()  # call and save smoothed data
         print("Final state vector array: ", self.state_vec)
         car.changeSpeed(0, 1000)  # Stop car after data collection
@@ -716,12 +626,10 @@ class SysID():
         raw_data = np.load(self.savedStates)
         smoothed_data_exp = np.copy(raw_data)
 
-        #smoothed_data = np.load("smoothedStateVec.npy")
         # gives a time array corresponding to each point
         time_array = np.arange(0, raw_data.shape[1])*self.time_step
 
         for row_index in [2, 3]:
-            # smoothed_row = wiener(smoothed_data[col_index, :], (3))  #2nd argument is the size of the filter
             for t_step in range(raw_data.shape[1]):
                 if t_step == 0:
                     smoothed_data_exp[row_index,
@@ -760,63 +668,23 @@ class SysID():
         print("Regression Beginning...")
         lam = 0  # regularization
         x = np.load(self.savedExpSmoothed).T
-        # x = self.state_vec.T # n,5
         state_dim = 5  # number of states (5 max) to use
         X = x[:-1, :state_dim]
         Y = x[1:, :state_dim]
         u = np.load(self.savedInputs).T
-        # u = self.input_vec.T # n,2
         U = u[:-1, :]
 
         print("X shape: ", X.shape)
         print("U shape: ", U.shape)
         A = np.hstack([X, U])  # n,7
-        # A = np.array([[1, 0, 0.25, 0, 0],
-        #               [0, 1, 0, 0.25, 0],
-        #               [0, 0, 1, 0, 0],
-        #               [0, 0, 0, 1, 0],
-        #               [0, 0, 0, 0, 1]])
-        # self.A = A
         coeff = np.linalg.inv(np.dot(A.T, A) + lam *
                               np.eye(state_dim+2)).dot(A.T).dot(Y)  # (7,5)
         self.A = coeff[:state_dim, :].T  # (5,5)
         self.B = coeff[state_dim:, :].T  # (5,2)
-        # self.B = (np.dot(np.linalg.pinv(U), Y-np.dot(X, self.A.T))).T #MAKE SURE TO TRANSPOSE
         print("Lawrence")
         print("A: ", self.A)
         print("B: ", self.B)
         print("B Shape: ", self.B.shape)
-
-        # error
-        #error_matrix = np.dot(A, coeff)-Y
-        #error_mean = np.mean(error_matrix, axis=0)
-        #error_max = np.max(error_matrix, axis=0)
-        #error_min = np.min(error_matrix, axis=0)
-        #error = np.vstack((error_mean, error_min, error_max))
-
-        #print("error: ", error)
-        # save data
-        # np.save(self.savedA, self.A)
-        # np.save(self.savetupledB, self.B)
-
-        # plt.plot(np.arange(A.shape[0]), np.dot(A, coeff)[:, 0], label='predicted')
-        # plt.plot(np.arange(A.shape[0]), Y[:, 0], label='actual')
-        # plt.legend()
-        # plt.title("Actual vs Predicted s")
-        # plt.show()
-
-        # plt.plot(np.arange(A.shape[0]), np.dot(A, coeff)[:, 1], label='predicted')
-        # plt.plot(np.arange(A.shape[0]), Y[:, 1], label='actual')
-        # plt.legend()
-        # plt.title("Actual vs Predicted Offset")
-        # plt.show()
-
-        # plt.plot(np.arange(A.shape[0]), np.dot(A, coeff)[:, 2], label='predicted')
-        # plt.plot(np.arange(A.shape[0]), Y[:, 2], label='actual')
-        # plt.legend()
-        # plt.title("Actual vs Predicted n")
-        # plt.show()
-
 
 
 if __name__ == '__main__':
@@ -839,16 +707,6 @@ if __name__ == '__main__':
             pointFromPixel.get_6_points(ros_img_msg)
             flag = True
             break
-            # pointFromPixel.pixel_to_track_cartesian(pointFromPixel.point0)
-            # pointFromPixel.pixel_to_track_cartesian(pointFromPixel.point1)
-            # pointFromPixel.pixel_to_track_cartesian(pointFromPixel.point2)
-            # pointFromPixel.pixel_to_track_cartesian(pointFromPixel.point3)
-            # pointFromPixel.pixel_to_track_cartesian(pointFromPixel.point4)
-            # pointFromPixel.pixel_to_track_cartesian(pointFromPixel.point5)
-            # np_image = pointFromPixel.ros_to_np_img(ros_img_msg)
-            # Display the CV Image
-            # cv2.imshow("CV Image", np_image)
-            # cv2.waitKey(0)
 
         except KeyboardInterrupt:
             print('Keyboard Interrupt, exiting')
@@ -861,22 +719,9 @@ if __name__ == '__main__':
     if flag:
         while not rospy.is_shutdown():
             try:
-                # getCarPos = GetCarState()
-                # ros_img_msg = last_image_service().image_data
-                # getCarPos.mask_red_obstacle(
-                #    ros_img_msg, pointFromPixel.list_of_detected_points, pointFromPixel)
-                # getCarPos.get_lw_xy(
-                #     ros_img_msg, pointFromPixel.list_of_detected_points, pointFromPixel)  # get obstacle
-                # print([getCarPos.blue_x, getCarPos.blue_y])
-                # print(pointFromPixel.pixel_to_track_cartesian(np.array([getCarPos.blue_y, getCarPos.blue_x])))
                 trial_SysID = SysID()
-                # trial_SysID.sysID_datacollect(pointFromPixel, last_image_service)
-                trial_SysID.regression_law()
-                # trial_SysID.plot_smoothing(0)
-                # trial_SysID.plot_smoothing(1)
-                # trial_SysID.plot_smoothing(2)
-                # trial_SysID.plot_smoothing(3)
-                # trial_SysID.plot_smoothing(4)
+                # trial_SysID.sysID_datacollect(pointFromPixel, last_image_service) #Uncomment to perform data collection
+                trial_SysID.regression_law() #Perform regression to get A and B matrices
             except KeyboardInterrupt:
                 print('Keyboard Interrupt, exiting')
                 break
