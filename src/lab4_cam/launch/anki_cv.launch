@@ -1,0 +1,9 @@
+<launch>
+    <include file= "$(find lab4_cam)/launch/run_cam.launch" />
+    <!-- <include file="$(find lab4_cam)/launch/ar_track.launch" /> -->
+    <node name="camera_srv" pkg="lab4_cam" type="camera_srv.py" output="screen"/>
+    <!-- <node name="depth_srv" pkg="lab4_cam" type="depth_srv.py" output="screen"/> -->
+    <node name="rs_cam_RGB" pkg="image_view" type="image_view" output="screen">
+        <remap from="image" to="/usb_cam/image_raw" />
+    </node>
+</launch>
